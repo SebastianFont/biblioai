@@ -1,0 +1,15 @@
+# Build output
+.next/
+out/
+build/
+coverage/
+
+# Dependencies
+node_modules/
+
+# Generated
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma generated client
+src/generated/
