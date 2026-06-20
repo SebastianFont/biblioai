@@ -1,0 +1,79 @@
+// Schema de Prisma — modelo de datos de BiblioAI.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  // El cliente se genera fuera de node_modules (generador nuevo de Prisma 7).
+  // Está en .gitignore y se regenera en cada `npm install` (postinstall).
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Usuario propietario de su biblioteca.
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  // Hash de la contraseña (Auth.js con credenciales). Nunca se guarda en texto plano.
+  passwordHash String
+  books        Book[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Libro catalogado por un usuario.
+// ─────────────────────────────────────────────────────────────────────────────
+model Book {
+  id          String   @id @default(cuid())
+  title       String
+  author      String
+  description String?
+  coverUrl    String?
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+  reviews     Review[]
+  // Etiquetas (géneros/temas) agregadas a partir del análisis de IA de las reseñas.
+  tags        Tag[]    @relation("BookTags")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reseña escrita por el usuario y enriquecida por la IA.
+// ─────────────────────────────────────────────────────────────────────────────
+model Review {
+  id      String @id @default(cuid())
+  content String // Texto escrito por el usuario.
+  rating  Int? // Puntuación opcional 1–5 (se valida en la capa de aplicación).
+
+  // Campos generados por la IA (nulos hasta que se procesa la reseña).
+  aiSummary   String?
+  // Sentimiento: POSITIVE | NEUTRAL | NEGATIVE | MIXED.
+  // Se usa String y no enum porque SQLite no soporta enums en Prisma;
+  // el conjunto de valores se valida con Zod en la capa de aplicación.
+  aiSentiment String?
+
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Etiqueta normalizada, compartida entre libros (relación N–N).
+// ─────────────────────────────────────────────────────────────────────────────
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  books Book[] @relation("BookTags")
+}
