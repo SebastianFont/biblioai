@@ -13,8 +13,12 @@ funciones que se exponen acá. Así logramos:
   tokens ni dependen de la red.
 - **Un único punto** para prompts, manejo de errores y reintentos.
 
-## Contenido (a medida que avanza el proyecto)
+## Contenido
 
-- `client.ts` — inicialización del SDK de Anthropic.
-- `summarize-review.ts` — resume y categoriza una reseña.
-- `prompts/` — prompts versionados y documentados.
+- `types.ts` — la interfaz `ReviewAnalyzer` (el contrato) y sus tipos.
+- `mock-analyzer.ts` — implementación determinista, sin costo (por defecto).
+- `claude-analyzer.ts` — implementación real con el Claude Agent SDK
+  (suscripción del usuario, sin API key).
+- `index.ts` — `getAnalyzer()`: elige la implementación según `AI_PROVIDER`.
+
+Ver [docs/AI_USAGE.md](../../../docs/AI_USAGE.md) para el detalle de decisiones.

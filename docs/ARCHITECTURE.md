@@ -57,12 +57,14 @@ fuente de verdad entre validación en runtime y tipos en compile-time.
 
 ## Decisiones registradas
 
-| Decisión                        | Motivo                                                                 |
-| ------------------------------- | ---------------------------------------------------------------------- |
-| Next.js App Router (monorepo)   | Full stack en un solo lenguaje y un solo deploy.                       |
-| SQLite en dev, Postgres en prod | Cero fricción local; Prisma abstrae el motor.                          |
-| Zod como fuente de tipos        | Evita duplicar validación runtime y tipos estáticos.                   |
-| Capa `lib/ai` aislada           | Desacopla el producto del proveedor de IA; habilita mocks.             |
-| Services separados de handlers  | Controladores delgados y lógica de negocio testeable.                  |
-| Driver adapter de Prisma 7      | Prisma 7 requiere un adapter, no una URL; SQLite vía `better-sqlite3`. |
-| `aiSentiment` como `String`     | SQLite no soporta enums en Prisma; los valores se validan con Zod.     |
+| Decisión                        | Motivo                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------ |
+| Next.js App Router (monorepo)   | Full stack en un solo lenguaje y un solo deploy.                                     |
+| SQLite en dev, Postgres en prod | Cero fricción local; Prisma abstrae el motor.                                        |
+| Zod como fuente de tipos        | Evita duplicar validación runtime y tipos estáticos.                                 |
+| Capa `lib/ai` aislada           | Desacopla el producto del proveedor de IA; habilita mocks.                           |
+| Services separados de handlers  | Controladores delgados y lógica de negocio testeable.                                |
+| Driver adapter de Prisma 7      | Prisma 7 requiere un adapter, no una URL; SQLite vía `better-sqlite3`.               |
+| `aiSentiment` como `String`     | SQLite no soporta enums en Prisma; los valores se validan con Zod.                   |
+| IA detrás de `ReviewAnalyzer`   | Interfaz con impl mock (default, sin costo) y Claude (suscripción); intercambiables. |
+| Enriquecido con degradación     | Si la IA falla, la reseña igual se guarda; la IA es un extra, no un SPOF.            |

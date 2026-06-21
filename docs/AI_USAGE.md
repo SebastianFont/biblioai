@@ -6,24 +6,37 @@ habilidad de ingeniería en sí misma.
 
 ## La IA dentro del producto
 
-BiblioAI usa el modelo **Claude** para procesar las reseñas que escribe el
-usuario y devolver:
+BiblioAI usa **Claude** para procesar las reseñas que escribe el usuario y
+devolver un **resumen**, un conjunto de **etiquetas/géneros** y un **análisis de
+sentimiento**. Toda la integración vive aislada en [`src/lib/ai`](../src/lib/ai)
+detrás de una interfaz (`ReviewAnalyzer`); el resto de la app no conoce al
+proveedor.
 
-- un **resumen** breve,
-- un conjunto de **etiquetas/géneros**,
-- un **análisis de sentimiento**.
+### Dos implementaciones, elegibles por configuración (`AI_PROVIDER`)
 
-Decisiones de diseño relevantes:
+- **`mock` (por defecto):** analizador determinista, sin costo ni credenciales.
+  Hace que el repo funcione para cualquiera y en CI sin gastar tokens.
+- **`claude`:** usa el **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`),
+  que se autentica con la **suscripción de Claude Code** del usuario logueado,
+  **sin API key**. Modelo liviano (`haiku`) porque la tarea es acotada.
 
-- **Modelo:** se usa un modelo liviano y económico (`claude-haiku-4-5`) porque
-  la tarea es acotada y el costo por reseña importa.
-- **Aislamiento:** toda la integración vive en [`src/lib/ai`](../src/lib/ai). El
-  resto de la app no conoce al proveedor.
-- **Salida estructurada:** se le pide al modelo un JSON con forma fija, validado
-  con Zod al recibirlo. Si la respuesta no valida, se trata como error
-  controlado (no se confía ciegamente en la salida del modelo).
-- **Tests sin red:** el cliente del LLM se mockea en los tests; no se gastan
-  tokens ni se depende de la disponibilidad del servicio.
+> **Decisión consciente y su límite:** usar la suscripción vía el Agent SDK evita
+> pagar la API por token, pero solo funciona **localmente**, donde el usuario está
+> logueado en Claude Code. No sirve para un deploy público que sirva a terceros
+> (para eso haría falta la API paga). Para este proyecto de portfolio —que se
+> muestra corriendo en local— es la opción correcta. La interfaz desacoplada
+> permite cambiar a otro proveedor sin tocar el resto del código.
+
+### Robustez
+
+- **No se confía a ciegas en el modelo:** se le pide JSON y la respuesta se
+  valida con Zod (`reviewAnalysisSchema`) antes de guardarla. Si no valida, es un
+  error controlado.
+- **Degradación elegante:** si el análisis falla (sin red, error del modelo), la
+  reseña del usuario igual se guarda; la IA es un "extra", no un punto único de
+  fallo.
+- **Tests sin red:** el analizador se inyecta y se mockea en los tests; no se
+  gastan tokens ni se depende de la disponibilidad del servicio.
 
 ## La IA como herramienta de desarrollo
 
