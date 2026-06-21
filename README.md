@@ -2,6 +2,7 @@
 
 > Gestor de biblioteca personal con análisis de reseñas asistido por IA.
 
+[![CI](https://github.com/SebastianFont/biblioai/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastianFont/biblioai/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue?logo=typescript)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -49,8 +50,8 @@ Además, para cada libro podés subir un **PDF de estudio** y la IA genera un
 | IA             | Claude Agent SDK (suscripción) · mock por defecto |
 | Tests          | Vitest (unitarios) + Playwright (E2E)             |
 | Calidad        | ESLint + Prettier                                 |
+| CI/CD          | GitHub Actions                                    |
 | Autenticación  | Auth.js (NextAuth) · _planeado_                   |
-| CI/CD          | GitHub Actions · _planeado_                       |
 | Infra          | Docker + docker-compose · _planeado_              |
 
 ## Estado del proyecto
@@ -65,11 +66,11 @@ Proyecto de portfolio en construcción. Estado actual:
 - ✅ Preprocesado del texto para la IA (descarte de ejercicios + recorte)
 - ✅ Búsqueda y filtrado
 - ✅ Tests unitarios (Vitest) y E2E (Playwright)
+- ✅ CI con GitHub Actions (formato, lint, tipos, tests unitarios y E2E)
 
 **Pendiente (roadmap)**
 
 - ⬜ Autenticación real con Auth.js (hoy: usuario demo del seed)
-- ⬜ CI con GitHub Actions (typecheck + lint + tests)
 - ⬜ Docker / docker-compose y despliegue con PostgreSQL
 
 ## 🚀 Quickstart
