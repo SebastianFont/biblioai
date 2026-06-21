@@ -1,4 +1,4 @@
-name: CI
+  name: CI
 
   on:
     push:
@@ -14,7 +14,7 @@ name: CI
 
   jobs:
     check:
-      name: Formato · Lint · Tipos · Tests
+      name: Formato - Lint - Tipos - Tests
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v4
