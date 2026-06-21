@@ -16,10 +16,16 @@ sentimiento** de cada reseña, que después podés usar para buscar y filtrar.
 > **prácticas de ingeniería**: arquitectura modular, validación estricta, tests,
 > CI/CD y documentación. Ver [`docs/`](./docs).
 
+## 📸 Capturas
+
+| Biblioteca                                  | Detalle del libro con reseñas + IA    |
+| ------------------------------------------- | ------------------------------------- |
+| ![Biblioteca](./docs/images/biblioteca.png) | ![Detalle](./docs/images/detalle.png) |
+
 ## ✨ Características
 
 - 📖 CRUD de libros y reseñas
-- 🤖 Resumen, etiquetado y sentimiento de reseñas con IA (Claude API)
+- 🤖 Resumen, etiquetado y sentimiento de reseñas con IA (Claude vía Agent SDK; mock por defecto)
 - 🔎 Búsqueda y filtrado por etiquetas generadas
 - 🔐 Autenticación de usuarios
 - ✅ Validación de extremo a extremo con Zod
@@ -29,13 +35,13 @@ sentimiento** de cada reseña, que después podés usar para buscar y filtrar.
 | Capa          | Tecnología                                    |
 | ------------- | --------------------------------------------- |
 | Framework     | Next.js 16 (App Router) + TypeScript estricto |
-| UI            | React 19 + Tailwind CSS + shadcn/ui           |
+| UI            | React 19 + Tailwind CSS (componentes propios) |
 | Validación    | Zod                                           |
 | Base de datos | Prisma + SQLite (dev) / PostgreSQL (prod)     |
 | Autenticación | Auth.js (NextAuth)                            |
-| IA            | Claude API (`@anthropic-ai/sdk`)              |
-| Tests         | Vitest (unit) + Playwright (e2e)              |
-| Calidad       | ESLint + Prettier + Husky                     |
+| IA            | Claude Agent SDK (suscripción) · mock por defecto |
+| Tests         | Vitest (unitarios)                            |
+| Calidad       | ESLint + Prettier                             |
 | CI/CD         | GitHub Actions                                |
 | Infra         | Docker + docker-compose                       |
 
@@ -51,9 +57,14 @@ npm install
 
 # 2. Configurar variables de entorno
 cp .env.example .env
-# Editá .env y completá tu ANTHROPIC_API_KEY
+# Por defecto AI_PROVIDER=mock: funciona sin credenciales.
+# Para IA real, poné AI_PROVIDER=claude (usa tu sesión de Claude Code).
 
-# 3. Levantar en desarrollo
+# 3. Preparar la base de datos (migración + datos de ejemplo)
+npm run db:migrate
+npm run db:seed
+
+# 4. Levantar en desarrollo
 npm run dev
 ```
 
