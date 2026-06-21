@@ -3,8 +3,9 @@
 Base: `/api`. Todas las respuestas son JSON. Los errores tienen la forma
 `{ "error": string }`, y los de validación agregan `{ "fields": { campo: mensaje } }`.
 
-> Mientras no exista autenticación (etapa 6), todas las operaciones actúan sobre
-> el usuario demo del seed. En la etapa 6 pasarán a usar la sesión real.
+> La app es single-user por diseño: todas las operaciones actúan sobre el usuario
+> demo del seed (resuelto en `getCurrentUserId()`). Sumar autenticación real solo
+> requeriría que esa función lea la sesión; los endpoints no cambian.
 
 ## Libros
 

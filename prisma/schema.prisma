@@ -19,7 +19,8 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String?
-  // Hash de la contraseña (Auth.js con credenciales). Nunca se guarda en texto plano.
+  // Hash de la contraseña (bcrypt). Nunca se guarda en texto plano. Hoy solo lo
+  // usa el seed; queda listo por si se sumara login con credenciales.
   passwordHash String
   books        Book[]
   createdAt    DateTime @default(now())

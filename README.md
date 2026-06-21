@@ -35,8 +35,9 @@ Además, para cada libro podés subir un **PDF de estudio** y la IA genera un
 - ✅ Validación de extremo a extremo con Zod
 - 🧪 Tests unitarios (Vitest) y end-to-end (Playwright)
 
-> 🔐 La autenticación de usuarios está en el roadmap (hoy se usa un usuario demo
-> del seed). Ver [Estado del proyecto](#estado-del-proyecto).
+> 🔐 App single-user por diseño: usa el usuario demo del seed. La sesión está
+> aislada en `getCurrentUserId()`, así que sumar autenticación real sería un
+> cambio acotado, sin tocar services ni rutas. Ver [Estado del proyecto](#estado-del-proyecto).
 
 ## 🛠️ Stack
 
@@ -51,7 +52,6 @@ Además, para cada libro podés subir un **PDF de estudio** y la IA genera un
 | Tests          | Vitest (unitarios) + Playwright (E2E)             |
 | Calidad        | ESLint + Prettier                                 |
 | CI/CD          | GitHub Actions                                    |
-| Autenticación  | Auth.js (NextAuth) · _planeado_                   |
 | Infra          | Docker + docker-compose · _planeado_              |
 
 ## Estado del proyecto
@@ -68,9 +68,13 @@ Proyecto de portfolio en construcción. Estado actual:
 - ✅ Tests unitarios (Vitest) y E2E (Playwright)
 - ✅ CI con GitHub Actions (formato, lint, tipos, tests unitarios y E2E)
 
+**Decisiones de alcance**
+
+- 🔐 Single-user por diseño (usuario demo del seed). La sesión está aislada en
+  `getCurrentUserId()`; sumar Auth.js sería un cambio local, sin tocar el resto.
+
 **Pendiente (roadmap)**
 
-- ⬜ Autenticación real con Auth.js (hoy: usuario demo del seed)
 - ⬜ Docker / docker-compose y despliegue con PostgreSQL
 
 ## 🚀 Quickstart

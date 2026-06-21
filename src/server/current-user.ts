@@ -2,12 +2,12 @@ import { prisma } from "@/lib/db/client";
 import { NotFoundError } from "@/server/errors";
 
 /**
- * Resuelve el usuario autenticado actual.
+ * Resuelve el usuario actual.
  *
- * TEMPORAL (etapa 3): todavía no hay autenticación, así que devolvemos el
- * usuario demo del seed. En la etapa 6 (Auth.js) esto leerá la sesión real;
- * el resto del código no se entera porque depende de esta función, no de
- * cómo se obtiene el usuario.
+ * Decisión de alcance: la app es single-user (muestra de portfolio), así que
+ * devolvemos el usuario demo del seed. Toda la app depende de esta función y no
+ * de cómo se obtiene el usuario: sumar autenticación real (p. ej. leer acá la
+ * sesión de Auth.js) sería un cambio local, sin tocar services ni rutas.
  */
 const DEMO_EMAIL = "demo@biblioai.dev";
 
