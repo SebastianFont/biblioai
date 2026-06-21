@@ -37,6 +37,29 @@ describe("listBooks", () => {
     await listBooks(USER);
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { ownerId: USER } }));
   });
+
+  it("sin búsqueda no agrega filtro OR", async () => {
+    findMany.mockResolvedValue([]);
+    await listBooks(USER, "   ");
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { ownerId: USER } }));
+  });
+
+  it("con búsqueda filtra por título, autor o etiqueta", async () => {
+    findMany.mockResolvedValue([]);
+    await listBooks(USER, "dragones");
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ownerId: USER,
+          OR: [
+            { title: { contains: "dragones" } },
+            { author: { contains: "dragones" } },
+            { tags: { some: { name: { contains: "dragones" } } } },
+          ],
+        },
+      }),
+    );
+  });
 });
 
 describe("getBook", () => {

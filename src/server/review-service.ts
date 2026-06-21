@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/client";
 import { getAnalyzer, type ReviewAnalyzer } from "@/lib/ai";
 import { NotFoundError } from "@/server/errors";
-import type { CreateReviewInput } from "@/lib/validators/review";
+import type { CreateReviewInput, UpdateReviewInput } from "@/lib/validators/review";
 
 /**
  * Lógica de negocio de reseñas.
@@ -27,21 +27,77 @@ export async function addReview(
   // falla, no perdemos su aporte (degradación elegante).
   const review = await prisma.review.create({ data: { ...input, bookId } });
 
+  return enrichWithAnalysis(review, book, input.content, analyzer);
+}
+
+/**
+ * Edita una reseña del usuario. Siempre actualiza los campos enviados; además,
+ * si cambió el contenido, vuelve a pasar la reseña por la IA (resumen, etiquetas
+ * y sentimiento) porque el análisis anterior ya no la representa.
+ */
+export async function updateReview(
+  userId: string,
+  bookId: string,
+  reviewId: string,
+  input: UpdateReviewInput,
+  analyzer: ReviewAnalyzer = getAnalyzer(),
+) {
+  const book = await getOwnedBook(userId, bookId);
+  await assertReviewInBook(reviewId, bookId);
+
+  const review = await prisma.review.update({ where: { id: reviewId }, data: input });
+
+  // Sin contenido nuevo, el análisis previo sigue siendo válido: no gastamos IA.
+  if (input.content === undefined) return review;
+
+  return enrichWithAnalysis(review, book, input.content, analyzer);
+}
+
+/** Elimina una reseña del usuario (verifica pertenencia primero). */
+export async function deleteReview(
+  userId: string,
+  bookId: string,
+  reviewId: string,
+): Promise<void> {
+  await getOwnedBook(userId, bookId);
+  await assertReviewInBook(reviewId, bookId);
+  await prisma.review.delete({ where: { id: reviewId } });
+}
+
+/** Lista las reseñas de un libro del usuario (más recientes primero). */
+export async function listReviews(userId: string, bookId: string) {
+  await getOwnedBook(userId, bookId);
+  return prisma.review.findMany({
+    where: { bookId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Analiza el contenido con la IA y guarda el resultado: resumen y sentimiento en
+ * la reseña, y las etiquetas propagadas al libro (N-N). Si la IA falla, devuelve
+ * la reseña tal cual (degradación elegante: la IA es un extra, no un SPOF).
+ */
+async function enrichWithAnalysis<T>(
+  review: T,
+  book: { id: string; title: string; author: string },
+  content: string,
+  analyzer: ReviewAnalyzer,
+): Promise<T> {
   try {
     const analysis = await analyzer.analyze({
-      content: input.content,
+      content,
       bookTitle: book.title,
       author: book.author,
     });
 
-    // Guardamos el análisis y propagamos las etiquetas al libro (N-N).
     const [enriched] = await prisma.$transaction([
       prisma.review.update({
-        where: { id: review.id },
+        where: { id: (review as { id: string }).id },
         data: { aiSummary: analysis.summary, aiSentiment: analysis.sentiment },
       }),
       prisma.book.update({
-        where: { id: bookId },
+        where: { id: book.id },
         data: {
           tags: {
             connectOrCreate: analysis.tags.map((name) => ({
@@ -52,21 +108,11 @@ export async function addReview(
         },
       }),
     ]);
-    return enriched;
+    return enriched as T;
   } catch (error) {
-    // La IA es un "extra": si falla, la reseña ya quedó guardada.
     console.error("No se pudo analizar la reseña con IA:", error);
     return review;
   }
-}
-
-/** Lista las reseñas de un libro del usuario (más recientes primero). */
-export async function listReviews(userId: string, bookId: string) {
-  await getOwnedBook(userId, bookId);
-  return prisma.review.findMany({
-    where: { bookId },
-    orderBy: { createdAt: "desc" },
-  });
 }
 
 /** Devuelve el libro si pertenece al usuario (con los datos que la IA necesita). */
@@ -79,4 +125,15 @@ async function getOwnedBook(userId: string, bookId: string) {
     throw new NotFoundError("Libro no encontrado");
   }
   return book;
+}
+
+/** Verifica que la reseña exista y pertenezca al libro; si no, NotFoundError. */
+async function assertReviewInBook(reviewId: string, bookId: string): Promise<void> {
+  const review = await prisma.review.findFirst({
+    where: { id: reviewId, bookId },
+    select: { id: true },
+  });
+  if (!review) {
+    throw new NotFoundError("Reseña no encontrada");
+  }
 }

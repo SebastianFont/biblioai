@@ -10,6 +10,9 @@ export const documentFilenameSchema = z
   .min(1, "Nombre de archivo inválido")
   .max(255);
 
+// Identificador de documento en parámetros de ruta.
+export const documentIdSchema = z.cuid("Identificador de documento inválido");
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Análisis de IA de un documento: resumen + mapa conceptual.
 // Esta forma valida tanto la salida del modelo como lo que se persiste.
@@ -31,12 +34,41 @@ export const conceptMapSchema = z.object({
 
 export type ConceptMap = z.infer<typeof conceptMapSchema>;
 
-export const documentAnalysisSchema = z.object({
-  summary: z.string().trim().min(1).max(4000),
-  conceptMap: conceptMapSchema,
-});
+// El análisis es parcial a propósito: el usuario elige qué generar (resumen,
+// mapa conceptual, o ambos), así que cada parte es opcional. Se exige al menos
+// una para que el resultado tenga sentido.
+export const documentAnalysisSchema = z
+  .object({
+    summary: z.string().trim().min(1).max(4000).optional(),
+    conceptMap: conceptMapSchema.optional(),
+  })
+  .refine((data) => data.summary !== undefined || data.conceptMap !== undefined, {
+    message: "El análisis debe incluir al menos el resumen o el mapa conceptual",
+  });
 
 export type DocumentAnalysis = z.infer<typeof documentAnalysisSchema>;
+
+// Booleano tolerante: acepta el tipo nativo o las formas típicas de un form/JSON
+// ("true"/"on"/"1" → true; "false"/"off"/"0"/ausente → false). No uso
+// z.coerce.boolean porque convierte CUALQUIER string no vacío (incluso "false")
+// en true. Por defecto false: lo no marcado no se genera.
+const checkboxBool = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform((v) => v === true || v === "true" || v === "on" || v === "1");
+
+// Qué partes generar. Se exige elegir al menos una.
+// Se usa tanto al subir (form) como al re-analizar (body JSON).
+export const generateOptionsSchema = z
+  .object({
+    summary: checkboxBool,
+    conceptMap: checkboxBool,
+  })
+  .refine((data) => data.summary || data.conceptMap, {
+    message: "Elegí al menos una opción para generar (resumen o mapa conceptual)",
+  });
+
+export type GenerateOptions = z.infer<typeof generateOptionsSchema>;
 
 /**
  * Parsea el mapa conceptual guardado (JSON string) de forma tolerante.

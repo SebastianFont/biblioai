@@ -26,5 +26,14 @@ export const updateBookSchema = createBookSchema
 // Identificador de libro en parámetros de ruta.
 export const bookIdSchema = z.cuid("Identificador de libro inválido");
 
+// Texto de búsqueda de la biblioteca (opcional, acotado). Se normaliza a
+// `undefined` cuando viene vacío para no filtrar de más.
+export const bookSearchSchema = z
+  .string()
+  .trim()
+  .max(120)
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 export type CreateBookInput = z.infer<typeof createBookSchema>;
 export type UpdateBookInput = z.infer<typeof updateBookSchema>;

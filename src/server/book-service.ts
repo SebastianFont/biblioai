@@ -11,10 +11,28 @@ import type { CreateBookInput, UpdateBookInput } from "@/lib/validators/book";
  * queda desacoplado de la autenticación y es testeable de forma aislada.
  */
 
-/** Lista los libros del usuario, con sus etiquetas y la cantidad de reseñas. */
-export function listBooks(userId: string) {
+/**
+ * Lista los libros del usuario, con sus etiquetas y la cantidad de reseñas.
+ *
+ * Con `search`, filtra por coincidencia (parcial) en título, autor o nombre de
+ * etiqueta. En SQLite `contains` usa LIKE, que es insensible a mayúsculas para
+ * ASCII; alcanza para una búsqueda simple sin índice de texto completo.
+ */
+export function listBooks(userId: string, search?: string) {
+  const term = search?.trim();
   return prisma.book.findMany({
-    where: { ownerId: userId },
+    where: {
+      ownerId: userId,
+      ...(term
+        ? {
+            OR: [
+              { title: { contains: term } },
+              { author: { contains: term } },
+              { tags: { some: { name: { contains: term } } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: {
       tags: { select: { id: true, name: true } },

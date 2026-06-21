@@ -1,5 +1,5 @@
 import { bookIdSchema } from "@/lib/validators/book";
-import { MAX_PDF_BYTES, PDF_MIME } from "@/lib/validators/document";
+import { MAX_PDF_BYTES, PDF_MIME, generateOptionsSchema } from "@/lib/validators/document";
 import { getCurrentUserId } from "@/server/current-user";
 import { addDocument, listDocuments } from "@/server/document-service";
 import { BadRequestError } from "@/server/errors";
@@ -37,8 +37,14 @@ export function POST(request: Request, { params }: Context) {
       throw new BadRequestError("El PDF supera el tamaño máximo (10 MB).");
     }
 
+    // Qué generar viene en el mismo form (checkboxes). Por defecto ambos.
+    const generate = generateOptionsSchema.parse({
+      summary: form.get("summary") ?? "true",
+      conceptMap: form.get("conceptMap") ?? "true",
+    });
+
     const data = new Uint8Array(await file.arrayBuffer());
-    const document = await addDocument(userId, bookId, { filename: file.name, data });
+    const document = await addDocument(userId, bookId, { filename: file.name, data }, generate);
     return json(document, 201);
   });
 }

@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/db/client";
 import { extractPdfText, type PdfTextExtractor } from "@/lib/pdf/extract-text";
+import { prepareStudyText } from "@/lib/pdf/study-text";
 import { getDocumentAnalyzer, type DocumentAnalyzer } from "@/lib/ai";
 import { BadRequestError, NotFoundError } from "@/server/errors";
-import { documentFilenameSchema } from "@/lib/validators/document";
+import { documentFilenameSchema, type DocumentAnalysis } from "@/lib/validators/document";
+import type { GenerateOptions } from "@/lib/validators/document";
 
 /**
  * Lógica de negocio de documentos (PDFs) asociados a un libro.
  *
  * Al subir un PDF se extrae su texto, se guarda y se lo enriquece con la capa de
- * IA: un resumen y un mapa conceptual para estudiar.
+ * IA: un resumen y/o un mapa conceptual (lo que el usuario elija) para estudiar.
+ * Antes de llamar a la IA, el texto se preprocesa (se descartan ejercicios y se
+ * acota) para reducir tokens y latencia.
  *
  * El extractor y el analizador se reciben por parámetro (inyección de
  * dependencia) para testear sin procesar PDFs reales ni llamar a la IA.
@@ -24,6 +28,17 @@ const DOCUMENT_SELECT = {
   createdAt: true,
 } as const;
 
+/** Mapea el análisis a columnas, incluyendo solo lo que efectivamente se generó. */
+function analysisUpdateData(analysis: DocumentAnalysis): {
+  aiSummary?: string;
+  aiConceptMap?: string;
+} {
+  const data: { aiSummary?: string; aiConceptMap?: string } = {};
+  if (analysis.summary !== undefined) data.aiSummary = analysis.summary;
+  if (analysis.conceptMap !== undefined) data.aiConceptMap = JSON.stringify(analysis.conceptMap);
+  return data;
+}
+
 interface AddDocumentInput {
   filename: string;
   data: Uint8Array;
@@ -33,6 +48,7 @@ export async function addDocument(
   userId: string,
   bookId: string,
   input: AddDocumentInput,
+  generate: GenerateOptions,
   extractor: PdfTextExtractor = extractPdfText,
   analyzer: DocumentAnalyzer = getDocumentAnalyzer(),
 ) {
@@ -46,21 +62,24 @@ export async function addDocument(
     );
   }
 
-  // Se guarda primero con el texto extraído. Así, si la IA falla, no perdemos el
-  // documento (degradación elegante, igual que con las reseñas).
+  // Se guarda primero con el texto crudo extraído (registro fiel). Así, si la IA
+  // falla, no perdemos el documento (degradación elegante, igual que reseñas).
   const document = await prisma.document.create({
     data: { filename, text, pageCount, bookId },
     select: DOCUMENT_SELECT,
   });
 
   try {
-    const analysis = await analyzer.analyze({ text, bookTitle: book.title, filename });
+    const study = prepareStudyText(text);
+    const analysis = await analyzer.analyze({
+      text: study.text,
+      bookTitle: book.title,
+      filename,
+      generate,
+    });
     return prisma.document.update({
       where: { id: document.id },
-      data: {
-        aiSummary: analysis.summary,
-        aiConceptMap: JSON.stringify(analysis.conceptMap),
-      },
+      data: analysisUpdateData(analysis),
       select: DOCUMENT_SELECT,
     });
   } catch (error) {
@@ -78,6 +97,62 @@ export async function listDocuments(userId: string, bookId: string) {
     orderBy: { createdAt: "desc" },
     select: DOCUMENT_SELECT,
   });
+}
+
+/**
+ * Vuelve a generar el resumen y/o el mapa conceptual de un documento ya subido,
+ * según lo pedido en `generate`. Útil si falló la IA al subirlo, si se cambió de
+ * proveedor/modelo, o si ahora se quiere también la parte que no se generó.
+ * Reutiliza el texto ya extraído (no reprocesa el PDF) y solo pisa las columnas
+ * que se regeneran (si pedís solo el resumen, el mapa conceptual queda intacto).
+ */
+export async function reanalyzeDocument(
+  userId: string,
+  bookId: string,
+  documentId: string,
+  generate: GenerateOptions,
+  analyzer: DocumentAnalyzer = getDocumentAnalyzer(),
+) {
+  const book = await getOwnedBook(userId, bookId);
+  const document = await prisma.document.findFirst({
+    where: { id: documentId, bookId },
+    select: { id: true, filename: true, text: true },
+  });
+  if (!document) {
+    throw new NotFoundError("Documento no encontrado");
+  }
+
+  // A diferencia de la subida, acá la IA es el objetivo: si falla, se propaga
+  // el error para que la UI lo muestre (no hay nada nuevo que "preservar").
+  const study = prepareStudyText(document.text);
+  const analysis = await analyzer.analyze({
+    text: study.text,
+    bookTitle: book.title,
+    filename: document.filename,
+    generate,
+  });
+  return prisma.document.update({
+    where: { id: document.id },
+    data: analysisUpdateData(analysis),
+    select: DOCUMENT_SELECT,
+  });
+}
+
+/** Elimina un documento del usuario (verifica pertenencia primero). */
+export async function deleteDocument(
+  userId: string,
+  bookId: string,
+  documentId: string,
+): Promise<void> {
+  await assertBookOwnership(userId, bookId);
+  const document = await prisma.document.findFirst({
+    where: { id: documentId, bookId },
+    select: { id: true },
+  });
+  if (!document) {
+    throw new NotFoundError("Documento no encontrado");
+  }
+  await prisma.document.delete({ where: { id: document.id } });
 }
 
 /** Devuelve el libro si pertenece al usuario (con los datos que la IA necesita). */

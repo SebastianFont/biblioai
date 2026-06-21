@@ -20,6 +20,19 @@ export const createReviewSchema = z.object({
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 
+// Edición de una reseña: campos opcionales, pero al menos uno debe venir.
+// Si cambia el contenido, la capa de IA vuelve a analizar la reseña.
+export const updateReviewSchema = createReviewSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Se debe enviar al menos un campo para actualizar",
+  });
+
+export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;
+
+// Identificador de reseña en parámetros de ruta.
+export const reviewIdSchema = z.cuid("Identificador de reseña inválido");
+
 // Forma esperada del análisis que devuelve el modelo (se valida al recibirlo).
 export const reviewAnalysisSchema = z.object({
   summary: z.string().trim().min(1).max(1000),

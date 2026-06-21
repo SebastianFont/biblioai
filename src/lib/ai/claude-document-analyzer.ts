@@ -6,37 +6,40 @@ import type { AnalyzeDocumentInput, DocumentAnalyzer } from "@/lib/ai/types";
  *
  * Mismas consideraciones que `claude-analyzer.ts`: usa la suscripción de Claude
  * del usuario logueado (no requiere ANTHROPIC_API_KEY), importa el SDK de forma
- * diferida, y pide JSON crudo por prompt que luego se valida con Zod (más robusto
- * entre versiones del SDK y sin gastar turnos extra).
+ * diferida, y pide JSON crudo por prompt que luego se valida con Zod.
+ *
+ * Optimización de costo/latencia:
+ *  - El `text` ya llega preprocesado (sin ejercicios y acotado; ver study-text).
+ *  - El system prompt pide SOLO las partes elegidas (`generate`): si únicamente
+ *    se quiere el resumen, no se gasta nada en el mapa conceptual (ni al revés).
  */
 
-// Límite de caracteres del texto que se manda al modelo. Un PDF largo puede
-// exceder el contexto y disparar costo/latencia; recortamos a una porción
-// representativa (el resumen extractivo igual prioriza el inicio del material).
-const MAX_TEXT_CHARS = 24_000;
-
-const SYSTEM_PROMPT = [
-  "Sos un asistente que crea material de estudio a partir de textos y respondés en español.",
-  "Respondé ÚNICAMENTE con un objeto JSON válido, sin texto extra ni markdown,",
-  "con exactamente estas claves:",
-  '- "summary": string (resumen claro del documento, 1 a 3 párrafos).',
-  '- "conceptMap": objeto con:',
-  '    - "central": string (el tema central, pocas palabras).',
-  '    - "concepts": array de 3 a 12 objetos, cada uno con:',
-  '        - "name": string (nombre del concepto, pocas palabras).',
-  '        - "description": string (1 a 2 frases que lo explican).',
-  '        - "connections": array de strings (nombres de otros conceptos relacionados).',
-].join(" ");
+function buildSystemPrompt({ summary, conceptMap }: { summary: boolean; conceptMap: boolean }) {
+  const keys: string[] = [];
+  if (summary) {
+    keys.push('- "summary": string (resumen claro del documento, 1 a 3 párrafos).');
+  }
+  if (conceptMap) {
+    keys.push(
+      '- "conceptMap": objeto con "central" (string, el tema central) y "concepts"',
+      '  (array de 3 a 12 objetos con "name" (string), "description" (1-2 frases)',
+      '  y "connections" (array de nombres de otros conceptos relacionados)).',
+    );
+  }
+  return [
+    "Sos un asistente que crea material de estudio a partir de textos y respondés en español.",
+    "Ignorá páginas de ejercicios, listas de problemas o cuestionarios: no aportan al estudio.",
+    "Respondé ÚNICAMENTE con un objeto JSON válido, sin texto extra ni markdown,",
+    "con exactamente estas claves:",
+    ...keys,
+  ].join(" ");
+}
 
 function buildPrompt({ text, bookTitle, filename }: AnalyzeDocumentInput): string {
-  const clipped =
-    text.length > MAX_TEXT_CHARS
-      ? `${text.slice(0, MAX_TEXT_CHARS)}\n[...texto recortado...]`
-      : text;
   return [
     `Libro: «${bookTitle}». Documento: «${filename}».`,
     "Texto del documento:",
-    clipped,
+    text,
     "",
     "Devolvé solo el JSON.",
   ].join("\n");
@@ -61,7 +64,7 @@ export const claudeDocumentAnalyzer: DocumentAnalyzer = {
       prompt: buildPrompt(input),
       options: {
         model: process.env.AI_MODEL ?? "haiku",
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt: buildSystemPrompt(input.generate),
         maxTurns: 2, // Margen para una respuesta de texto; no usa herramientas.
         allowedTools: [], // Tarea de texto pura: sin herramientas.
       },
@@ -75,7 +78,12 @@ export const claudeDocumentAnalyzer: DocumentAnalyzer = {
       }
     }
 
-    // Defensa en profundidad: nunca confiamos a ciegas en la salida del modelo.
-    return documentAnalysisSchema.parse(raw);
+    // Nos quedamos solo con lo pedido (el modelo a veces agrega de más) y
+    // validamos en profundidad: nunca confiamos a ciegas en la salida.
+    const obj = (raw ?? {}) as Record<string, unknown>;
+    const picked: Record<string, unknown> = {};
+    if (input.generate.summary) picked.summary = obj.summary;
+    if (input.generate.conceptMap) picked.conceptMap = obj.conceptMap;
+    return documentAnalysisSchema.parse(picked);
   },
 };

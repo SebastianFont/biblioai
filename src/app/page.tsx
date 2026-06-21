@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getCurrentUserId } from "@/server/current-user";
 import { listBooks } from "@/server/book-service";
+import { bookSearchSchema } from "@/lib/validators/book";
 import { BookCard } from "@/components/book-card";
+import { BookSearch } from "@/components/book-search";
 import { NewBookForm } from "@/components/new-book-form";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +14,12 @@ export const dynamic = "force-dynamic";
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string }>;
+  searchParams: Promise<{ tag?: string; q?: string }>;
 }) {
-  const { tag } = await searchParams;
+  const { tag, q } = await searchParams;
+  const query = bookSearchSchema.parse(q);
   const userId = await getCurrentUserId();
-  const books = await listBooks(userId);
+  const books = await listBooks(userId, query);
 
   // Etiquetas únicas para el filtro.
   const allTags = [...new Set(books.flatMap((b) => b.tags.map((t) => t.name)))].sort();
@@ -37,6 +40,8 @@ export default async function LibraryPage({
         <NewBookForm />
       </Card>
 
+      <BookSearch initialQuery={query ?? ""} />
+
       {allTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-zinc-500">Filtrar:</span>
@@ -54,9 +59,11 @@ export default async function LibraryPage({
 
       {visible.length === 0 ? (
         <Card className="text-center text-sm text-zinc-500">
-          {books.length === 0
-            ? "Todavía no cargaste ningún libro. ¡Agregá el primero arriba!"
-            : "No hay libros con esa etiqueta."}
+          {query
+            ? `No se encontraron libros para «${query}».`
+            : books.length === 0
+              ? "Todavía no cargaste ningún libro. ¡Agregá el primero arriba!"
+              : "No hay libros con esa etiqueta."}
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

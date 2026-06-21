@@ -5,9 +5,10 @@ import { getBook } from "@/server/book-service";
 import { NotFoundError } from "@/server/errors";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SentimentBadge } from "@/components/sentiment-badge";
 import { AddReviewForm } from "@/components/add-review-form";
+import { ReviewItem } from "@/components/review-item";
 import { DocumentUpload } from "@/components/document-upload";
+import { DocumentActions } from "@/components/document-actions";
 import { ConceptMapView } from "@/components/concept-map";
 import { parseConceptMap } from "@/lib/validators/document";
 import { formatDate } from "@/lib/utils";
@@ -60,15 +61,20 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
                   key={doc.id}
                   className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
                 >
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-start justify-between gap-2 text-sm">
                     <span className="flex items-center gap-2">
                       <span aria-hidden>📄</span>
                       <span className="font-medium">{doc.filename}</span>
                       {doc.pageCount != null && (
                         <span className="text-zinc-400">· {doc.pageCount} pág.</span>
                       )}
+                      <time className="text-xs text-zinc-400">{formatDate(doc.createdAt)}</time>
                     </span>
-                    <time className="text-xs text-zinc-400">{formatDate(doc.createdAt)}</time>
+                    <DocumentActions
+                      bookId={book.id}
+                      documentId={doc.id}
+                      analyzed={Boolean(doc.aiSummary)}
+                    />
                   </div>
 
                   {doc.aiSummary && (
@@ -113,33 +119,7 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
           </Card>
         ) : (
           book.reviews.map((review) => (
-            <Card key={review.id} className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {review.rating != null && (
-                    <span className="text-sm text-amber-500" aria-label={`${review.rating} de 5`}>
-                      {"★".repeat(review.rating)}
-                      <span className="text-zinc-300 dark:text-zinc-600">
-                        {"★".repeat(5 - review.rating)}
-                      </span>
-                    </span>
-                  )}
-                  {review.aiSentiment && <SentimentBadge sentiment={review.aiSentiment} />}
-                </div>
-                <time className="text-xs text-zinc-400">{formatDate(review.createdAt)}</time>
-              </div>
-
-              <p className="text-sm text-zinc-700 dark:text-zinc-200">{review.content}</p>
-
-              {review.aiSummary && (
-                <div className="rounded-md bg-indigo-50 p-3 text-sm dark:bg-indigo-950/40">
-                  <p className="mb-1 text-xs font-medium tracking-wide text-indigo-600 uppercase dark:text-indigo-300">
-                    Resumen IA
-                  </p>
-                  <p className="text-zinc-700 dark:text-zinc-200">{review.aiSummary}</p>
-                </div>
-              )}
-            </Card>
+            <ReviewItem key={review.id} bookId={book.id} review={review} />
           ))
         )}
       </section>

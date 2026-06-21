@@ -48,3 +48,11 @@ next-env.d.ts
 /dev.db-journal
 # Cliente generado por Prisma (se regenera en postinstall).
 /src/generated
+
+# e2e (Playwright)
+/e2e.db
+/e2e.db-journal
+/e2e/fixtures
+/test-results
+/playwright-report
+/playwright/.cache

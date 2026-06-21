@@ -104,10 +104,10 @@ function buildConceptMap(input: AnalyzeDocumentInput): ConceptMap {
 
 export const mockDocumentAnalyzer: DocumentAnalyzer = {
   async analyze(input: AnalyzeDocumentInput) {
-    // Validamos también acá para garantizar el contrato pase lo que pase.
-    return documentAnalysisSchema.parse({
-      summary: summarize(input.text),
-      conceptMap: buildConceptMap(input),
-    });
+    // Genera solo lo pedido (igual que el analizador real) y valida el contrato.
+    const result: { summary?: string; conceptMap?: ReturnType<typeof buildConceptMap> } = {};
+    if (input.generate.summary) result.summary = summarize(input.text);
+    if (input.generate.conceptMap) result.conceptMap = buildConceptMap(input);
+    return documentAnalysisSchema.parse(result);
   },
 };
