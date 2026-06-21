@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { SentimentBadge } from "@/components/sentiment-badge";
 import { AddReviewForm } from "@/components/add-review-form";
 import { DocumentUpload } from "@/components/document-upload";
+import { ConceptMapView } from "@/components/concept-map";
+import { parseConceptMap } from "@/lib/validators/document";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -45,27 +47,52 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
       <Card>
         <h2 className="font-semibold">Material de estudio</h2>
         <p className="mt-1 mb-3 text-sm text-zinc-500 dark:text-zinc-400">
-          Subí un PDF y, en la próxima etapa, la IA generará un resumen y un mapa conceptual.
+          Subí un PDF y la IA generará un resumen y un mapa conceptual para estudiar.
         </p>
         <DocumentUpload bookId={book.id} />
 
         {book.documents.length > 0 && (
-          <ul className="mt-4 space-y-2">
-            {book.documents.map((doc) => (
-              <li
-                key={doc.id}
-                className="flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
-              >
-                <span className="flex items-center gap-2">
-                  <span aria-hidden>📄</span>
-                  <span className="font-medium">{doc.filename}</span>
-                  {doc.pageCount != null && (
-                    <span className="text-zinc-400">· {doc.pageCount} pág.</span>
+          <ul className="mt-4 space-y-3">
+            {book.documents.map((doc) => {
+              const conceptMap = parseConceptMap(doc.aiConceptMap);
+              return (
+                <li
+                  key={doc.id}
+                  className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2">
+                      <span aria-hidden>📄</span>
+                      <span className="font-medium">{doc.filename}</span>
+                      {doc.pageCount != null && (
+                        <span className="text-zinc-400">· {doc.pageCount} pág.</span>
+                      )}
+                    </span>
+                    <time className="text-xs text-zinc-400">{formatDate(doc.createdAt)}</time>
+                  </div>
+
+                  {doc.aiSummary && (
+                    <div className="mt-3 rounded-md bg-indigo-50 p-3 text-sm dark:bg-indigo-950/40">
+                      <p className="mb-1 text-xs font-medium tracking-wide text-indigo-600 uppercase dark:text-indigo-300">
+                        Resumen IA
+                      </p>
+                      <p className="whitespace-pre-line text-zinc-700 dark:text-zinc-200">
+                        {doc.aiSummary}
+                      </p>
+                    </div>
                   )}
-                </span>
-                <time className="text-xs text-zinc-400">{formatDate(doc.createdAt)}</time>
-              </li>
-            ))}
+
+                  {conceptMap && (
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-medium tracking-wide text-indigo-600 uppercase dark:text-indigo-300">
+                        Mapa conceptual
+                      </p>
+                      <ConceptMapView map={conceptMap} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>

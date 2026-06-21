@@ -1,17 +1,28 @@
 import { prisma } from "@/lib/db/client";
 import { extractPdfText, type PdfTextExtractor } from "@/lib/pdf/extract-text";
+import { getDocumentAnalyzer, type DocumentAnalyzer } from "@/lib/ai";
 import { BadRequestError, NotFoundError } from "@/server/errors";
 import { documentFilenameSchema } from "@/lib/validators/document";
 
 /**
  * Lógica de negocio de documentos (PDFs) asociados a un libro.
  *
- * Al subir un PDF se extrae su texto y se guarda. Ese texto es la base para el
- * resumen y el mapa conceptual que genera la IA (etapa siguiente).
+ * Al subir un PDF se extrae su texto, se guarda y se lo enriquece con la capa de
+ * IA: un resumen y un mapa conceptual para estudiar.
  *
- * El extractor se recibe por parámetro (inyección de dependencia) para testear
- * sin procesar PDFs reales.
+ * El extractor y el analizador se reciben por parámetro (inyección de
+ * dependencia) para testear sin procesar PDFs reales ni llamar a la IA.
  */
+
+// Campos que se exponen del documento (nunca el texto completo, que es pesado).
+const DOCUMENT_SELECT = {
+  id: true,
+  filename: true,
+  pageCount: true,
+  aiSummary: true,
+  aiConceptMap: true,
+  createdAt: true,
+} as const;
 
 interface AddDocumentInput {
   filename: string;
@@ -23,8 +34,9 @@ export async function addDocument(
   bookId: string,
   input: AddDocumentInput,
   extractor: PdfTextExtractor = extractPdfText,
+  analyzer: DocumentAnalyzer = getDocumentAnalyzer(),
 ) {
-  await assertBookOwnership(userId, bookId);
+  const book = await getOwnedBook(userId, bookId);
   const filename = documentFilenameSchema.parse(input.filename);
 
   const { text, pageCount } = await extractor(input.data);
@@ -34,20 +46,50 @@ export async function addDocument(
     );
   }
 
-  return prisma.document.create({
+  // Se guarda primero con el texto extraído. Así, si la IA falla, no perdemos el
+  // documento (degradación elegante, igual que con las reseñas).
+  const document = await prisma.document.create({
     data: { filename, text, pageCount, bookId },
-    select: { id: true, filename: true, pageCount: true, createdAt: true },
+    select: DOCUMENT_SELECT,
   });
+
+  try {
+    const analysis = await analyzer.analyze({ text, bookTitle: book.title, filename });
+    return prisma.document.update({
+      where: { id: document.id },
+      data: {
+        aiSummary: analysis.summary,
+        aiConceptMap: JSON.stringify(analysis.conceptMap),
+      },
+      select: DOCUMENT_SELECT,
+    });
+  } catch (error) {
+    // La IA es un "extra": si falla, el documento ya quedó guardado.
+    console.error("No se pudo analizar el documento con IA:", error);
+    return document;
+  }
 }
 
-/** Lista los documentos de un libro (metadatos, sin el texto completo). */
+/** Lista los documentos de un libro (metadatos + IA, sin el texto completo). */
 export async function listDocuments(userId: string, bookId: string) {
   await assertBookOwnership(userId, bookId);
   return prisma.document.findMany({
     where: { bookId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, filename: true, pageCount: true, createdAt: true },
+    select: DOCUMENT_SELECT,
   });
+}
+
+/** Devuelve el libro si pertenece al usuario (con los datos que la IA necesita). */
+async function getOwnedBook(userId: string, bookId: string) {
+  const book = await prisma.book.findFirst({
+    where: { id: bookId, ownerId: userId },
+    select: { id: true, title: true },
+  });
+  if (!book) {
+    throw new NotFoundError("Libro no encontrado");
+  }
+  return book;
 }
 
 async function assertBookOwnership(userId: string, bookId: string): Promise<void> {

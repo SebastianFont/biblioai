@@ -1,8 +1,15 @@
 import { claudeAnalyzer } from "@/lib/ai/claude-analyzer";
 import { mockAnalyzer } from "@/lib/ai/mock-analyzer";
-import type { ReviewAnalyzer } from "@/lib/ai/types";
+import { claudeDocumentAnalyzer } from "@/lib/ai/claude-document-analyzer";
+import { mockDocumentAnalyzer } from "@/lib/ai/mock-document-analyzer";
+import type { DocumentAnalyzer, ReviewAnalyzer } from "@/lib/ai/types";
 
-export type { AnalyzeInput, ReviewAnalyzer } from "@/lib/ai/types";
+export type {
+  AnalyzeInput,
+  ReviewAnalyzer,
+  AnalyzeDocumentInput,
+  DocumentAnalyzer,
+} from "@/lib/ai/types";
 
 /**
  * Devuelve el analizador de reseñas según la configuración.
@@ -22,5 +29,20 @@ export function getAnalyzer(): ReviewAnalyzer {
     case "mock":
     default:
       return mockAnalyzer;
+  }
+}
+
+/**
+ * Devuelve el analizador de documentos según `AI_PROVIDER` (mismo criterio que
+ * `getAnalyzer`). Se mantiene separado porque es otro contrato (otra salida),
+ * aunque hoy ambos respeten el mismo selector de proveedor.
+ */
+export function getDocumentAnalyzer(): DocumentAnalyzer {
+  switch (process.env.AI_PROVIDER) {
+    case "claude":
+      return claudeDocumentAnalyzer;
+    case "mock":
+    default:
+      return mockDocumentAnalyzer;
   }
 }

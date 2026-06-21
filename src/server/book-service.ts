@@ -31,7 +31,14 @@ export async function getBook(userId: string, bookId: string) {
       tags: { select: { id: true, name: true } },
       reviews: { orderBy: { createdAt: "desc" } },
       documents: {
-        select: { id: true, filename: true, pageCount: true, createdAt: true },
+        select: {
+          id: true,
+          filename: true,
+          pageCount: true,
+          aiSummary: true,
+          aiConceptMap: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: "desc" },
       },
     },

@@ -72,7 +72,7 @@ model Review {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Documento (PDF) asociado a un libro, con su texto extraído.
-// El resumen y el mapa conceptual generados por la IA se agregan en otra etapa.
+// A partir del texto, la IA genera un resumen y un mapa conceptual de estudio.
 // ─────────────────────────────────────────────────────────────────────────────
 model Document {
   id        String   @id @default(cuid())
@@ -80,6 +80,14 @@ model Document {
   // Texto plano extraído del PDF; base para el análisis de IA.
   text      String
   pageCount Int?
+
+  // Campos generados por la IA (nulos hasta que se procesa el documento).
+  aiSummary String?
+  // Mapa conceptual serializado como JSON (central + conceptos + conexiones).
+  // Se guarda como String porque SQLite no tiene tipo JSON nativo en Prisma;
+  // la forma se valida con Zod (documentAnalysisSchema) al leer y al escribir.
+  aiConceptMap String?
+
   book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   bookId    String
   createdAt DateTime @default(now())
