@@ -46,6 +46,20 @@ Base: `/api`. Todas las respuestas son JSON. Los errores tienen la forma
 El resumen, las etiquetas y el sentimiento (`aiSummary`, `aiSentiment`) los
 genera la capa de IA (etapa 4); no se aceptan desde el cliente.
 
+## Documentos (PDF)
+
+| Método | Ruta                       | Descripción                          | Éxito |
+| ------ | -------------------------- | ------------------------------------ | ----- |
+| `GET`  | `/api/books/:id/documents` | Lista los PDFs del libro (metadatos) | 200   |
+| `POST` | `/api/books/:id/documents` | Sube un PDF y extrae su texto        | 201   |
+
+### Subir documento — `POST /api/books/:id/documents`
+
+`multipart/form-data` con un campo `file` (PDF, máx. 10 MB). Se extrae el texto
+del PDF y se guarda; el resumen y el mapa conceptual los genera la IA en una
+etapa posterior. Respuestas de error: `400` si falta el archivo, no es PDF,
+supera el tamaño, o no tiene texto extraíble.
+
 ## Códigos de error
 
 | Código | Cuándo                                                          |

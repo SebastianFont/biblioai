@@ -35,11 +35,12 @@ model Book {
   author      String
   description String?
   coverUrl    String?
-  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId     String
   reviews     Review[]
+  documents   Document[]
   // Etiquetas (géneros/temas) agregadas a partir del análisis de IA de las reseñas.
-  tags        Tag[]    @relation("BookTags")
+  tags        Tag[]      @relation("BookTags")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -61,6 +62,24 @@ model Review {
   // el conjunto de valores se valida con Zod en la capa de aplicación.
   aiSentiment String?
 
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Documento (PDF) asociado a un libro, con su texto extraído.
+// El resumen y el mapa conceptual generados por la IA se agregan en otra etapa.
+// ─────────────────────────────────────────────────────────────────────────────
+model Document {
+  id        String   @id @default(cuid())
+  filename  String
+  // Texto plano extraído del PDF; base para el análisis de IA.
+  text      String
+  pageCount Int?
   book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   bookId    String
   createdAt DateTime @default(now())

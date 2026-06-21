@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SentimentBadge } from "@/components/sentiment-badge";
 import { AddReviewForm } from "@/components/add-review-form";
+import { DocumentUpload } from "@/components/document-upload";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,34 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
           </div>
         )}
       </header>
+
+      <Card>
+        <h2 className="font-semibold">Material de estudio</h2>
+        <p className="mt-1 mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+          Subí un PDF y, en la próxima etapa, la IA generará un resumen y un mapa conceptual.
+        </p>
+        <DocumentUpload bookId={book.id} />
+
+        {book.documents.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {book.documents.map((doc) => (
+              <li
+                key={doc.id}
+                className="flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+              >
+                <span className="flex items-center gap-2">
+                  <span aria-hidden>📄</span>
+                  <span className="font-medium">{doc.filename}</span>
+                  {doc.pageCount != null && (
+                    <span className="text-zinc-400">· {doc.pageCount} pág.</span>
+                  )}
+                </span>
+                <time className="text-xs text-zinc-400">{formatDate(doc.createdAt)}</time>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card>
         <h2 className="mb-3 font-semibold">Escribir una reseña</h2>

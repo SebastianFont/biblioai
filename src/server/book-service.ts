@@ -30,6 +30,10 @@ export async function getBook(userId: string, bookId: string) {
     include: {
       tags: { select: { id: true, name: true } },
       reviews: { orderBy: { createdAt: "desc" } },
+      documents: {
+        select: { id: true, filename: true, pageCount: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
   if (!book) {
