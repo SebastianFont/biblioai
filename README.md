@@ -65,9 +65,11 @@ Abrí [http://localhost:3000](http://localhost:3000).
 | ------------------- | ------------------------------- |
 | `npm run dev`       | Servidor de desarrollo          |
 | `npm run build`     | Build de producción             |
+| `npm run test`      | Tests unitarios (Vitest)        |
 | `npm run lint`      | Linter (ESLint)                 |
 | `npm run format`    | Formatea el código con Prettier |
 | `npm run typecheck` | Chequeo de tipos sin emitir     |
+| `npm run db:seed`   | Carga datos de ejemplo          |
 
 ## 📂 Estructura
 
@@ -88,6 +90,7 @@ Cada carpeta documenta su responsabilidad en un `README.md` propio.
 ## 📚 Documentación
 
 - [Arquitectura y decisiones técnicas](./docs/ARCHITECTURE.md)
+- [Referencia de la API REST](./docs/API.md)
 - [Cómo se usó la IA en este proyecto](./docs/AI_USAGE.md)
 
 ## 📄 Licencia
